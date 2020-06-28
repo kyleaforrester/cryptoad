@@ -270,11 +270,11 @@ fn parse_args() -> (Option<Algorithm>, Vec<String>, Option<String>, Option<Direc
 
 fn match_algorithm(algorithm: &str) -> Option<Algorithm> {
     match algorithm {
-        "Twofish" => return Some(Algorithm::Twofish),
-        "Rijndael" => return Some(Algorithm::Rijndael),
-        "AES" => return Some(Algorithm::Rijndael),
-        "Serpent" => return Some(Algorithm::Serpent),
-        "Pontifex" => return Some(Algorithm::Pontifex),
+        "Twofish" | "twofish" => return Some(Algorithm::Twofish),
+        "Rijndael" | "rijndael" => return Some(Algorithm::Rijndael),
+        "AES" | "aes" => return Some(Algorithm::Rijndael),
+        "Serpent" | "serpent" => return Some(Algorithm::Serpent),
+        "Pontifex" | "pontifex" => return Some(Algorithm::Pontifex),
         _ => return None,
     }
 }
