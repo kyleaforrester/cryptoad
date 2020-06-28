@@ -2,11 +2,12 @@ use std::env;
 use std::io::{self, Write, Read};
 use std::fs::File;
 use std::path::Path;
+use std::fmt;
 
-use alg::twofish;
-use alg::rijndael;
-use alg::serpent;
-use alg::pontifex;
+mod twofish;
+mod rijndael;
+mod serpent;
+mod pontifex;
 
 enum ArgState {
     Begin,
@@ -40,69 +41,49 @@ impl fmt::Display for Algorithm {
 
 
 fn main() {
-    let (mut algorithm, files, mut key, direction) = parse_args();
+    let (algorithm, files, key, direction) = parse_args();
 
-    match algorithm {
-        Some(x) => (),
-        None => {
-            eprintln!("Error! -a option for algorithm must be defined");
-            help_args();
-        }
-    }
+    let algorithm = algorithm.expect("Error! -a option for algorithm must be defined. Use -h or --help for full options.");
+    let key = key.expect("Error! -k option for key must be defined. Use -h or --help for full options.");
+    let direction = direction.expect("Error! -d or -e option for direction must be defined. Use -h or --help for full options.");
 
-    match key {
-        Some(x) => (),
-        None => {
-            eprintln!("Error! -k option for key must be defined");
-            help_args();
-        }
-    }
-
-    match direction {
-        Some(x) => (),
-        None => {
-            eprintln!("Error! -d or -e option for direction must be defined");
-            help_args();
-        }
-    }
-
-    let byte_key = convert_hex(key);
+    let byte_key = convert_hex(&key);
 
     if files.len() == 0 {
         match direction {
-            Direction::Encrypt => encrypt_stdin(algorithm, byte_key),
-            Direction::Decrypt => decrypt_stdin(algorithm, byte_key),
+            Direction::Encrypt => encrypt_stdin(&algorithm, &byte_key),
+            Direction::Decrypt => decrypt_stdin(&algorithm, &byte_key),
         }
     }
     else {
         match direction {
-            Direction::Encrypt => encrypt_files(algorithm, byte_key, files),
-            Direction::Decrypt => decrypt_files(algorithm, byte_key, files),
+            Direction::Encrypt => encrypt_files(&algorithm, &byte_key, files),
+            Direction::Decrypt => decrypt_files(&algorithm, &byte_key, files),
         }
     }
 }
 
-fn encrypt(plain_text: Vec<u8>, algorithm: Algorithm, key: Vec<u8>) -> Vec<u8> {
+fn encrypt(plain_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>) -> Vec<u8> {
     let cipher_text = match algorithm {
-        Algorithm::Twofish => alg::twofish::encrypt(plain_text, key),
-        Algorithm::Rijndael => alg::rijndael::encrypt(plain_text, key),
-        Algorithm::Serpent => alg::serpent::encrypt(plain_text, key),
-        Algorithm::Pontifex => alg::pontifex::encrypt(plain_text, key),
-    }
+        Algorithm::Twofish => twofish::encrypt(plain_text, key),
+        Algorithm::Rijndael => rijndael::encrypt(plain_text, key),
+        Algorithm::Serpent => serpent::encrypt(plain_text, key),
+        Algorithm::Pontifex => pontifex::encrypt(plain_text, key),
+    };
     cipher_text
 }
 
-fn decrypt(cipher_text: Vec<u8>, algorithm: Algorithm, key: Vec<u8>) -> Vec<u8> {
+fn decrypt(cipher_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>) -> Vec<u8> {
     let plain_text = match algorithm {
-        Algorithm::Twofish => alg::twofish::decrypt(cipher_text, key),
-        Algorithm::Rijndael => alg::rijndael::decrypt(cipher_text, key),
-        Algorithm::Serpent => alg::serpent::decrypt(cipher_text, key),
-        Algorithm::Pontifex => alg::pontifex::decrypt(cipher_text, key),
-    }
+        Algorithm::Twofish => twofish::decrypt(cipher_text, key),
+        Algorithm::Rijndael => rijndael::decrypt(cipher_text, key),
+        Algorithm::Serpent => serpent::decrypt(cipher_text, key),
+        Algorithm::Pontifex => pontifex::decrypt(cipher_text, key),
+    };
     plain_text
 }
 
-fn encrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
+fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
     for file_str in &files {
         let path = Path::new(file_str);
         let mut plain_text: Vec<u8> = Vec::new();
@@ -115,8 +96,8 @@ fn encrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match file.read_to_end(&plain_text) {
-            Ok(f) => (),
+        match file.read_to_end(&mut plain_text) {
+            Ok(_f) => (),
             Err(error) => {
                 eprintln!("Could not read from file {}! {}", path.display(), error);
                 continue;
@@ -125,8 +106,9 @@ fn encrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
 
         let cipher_text = encrypt(plain_text, algorithm, key);
 
+        let output_file_name = format!("{}_{}", file_str, algorithm);
         let mut output_file;
-        let output_path = Path::new(format!("{}_{}", file_str, algorithm);
+        let output_path = Path::new(&output_file_name);
         match File::create(&output_path) {
             Ok(f) => output_file = f,
             Err(error) => {
@@ -135,8 +117,8 @@ fn encrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match output_file.write_all(cipher_text) {
-            Ok() => (),
+        match output_file.write_all(&cipher_text) {
+            Ok(_f) => (),
             Err(error) => {
                 eprintln!("Unable to write to new file {}! {}", output_path.display(), error);
                 continue;
@@ -145,7 +127,7 @@ fn encrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
     }
 }
 
-fn decrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
+fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
     for file_str in &files {
         let path = Path::new(file_str);
         let mut cipher_text: Vec<u8> = Vec::new();
@@ -158,8 +140,8 @@ fn decrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match file.read_to_end(&cipher_text) {
-            Ok(f) => (),
+        match file.read_to_end(&mut cipher_text) {
+            Ok(_f) => (),
             Err(error) => {
                 eprintln!("Could not read from file {}! {}", path.display(), error);
                 continue;
@@ -169,7 +151,8 @@ fn decrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
         let plain_text = decrypt(cipher_text, algorithm, key);
 
         let mut output_file;
-        let output_path = Path::new(file_str.push_str("_decrypted"));
+        let new_file = format!("{}_{}", file_str, "decrypted");
+        let output_path = Path::new(&new_file);
         match File::create(&output_path) {
             Ok(f) => output_file = f,
             Err(error) => {
@@ -178,8 +161,8 @@ fn decrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match output_file.write_all(plain_text) {
-            Ok() => (),
+        match output_file.write_all(&plain_text) {
+            Ok(_f) => (),
             Err(error) => {
                 eprintln!("Unable to write to new file {}! {}", output_path.display(), error);
                 continue;
@@ -188,74 +171,71 @@ fn decrypt_files(algorithm: Algorithm, key: Vec<u8>, files: Vec<String>) {
     }
 }
 
-fn encrypt_stdin(algorithm: Algorithm, key: Vec<u8>) {
+fn encrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
     let mut plain_text: Vec<u8> = Vec::new();
-    match io::stdin().read_to_end(plain_text) {
+    match io::stdin().read_to_end(&mut plain_text) {
         Ok(n) => (),
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
     let cipher_text = encrypt(plain_text, algorithm, key);
 
-    match io::stdout().write_all(cipher_text) {
+    match io::stdout().write_all(&cipher_text) {
         Ok(n) => (),
         Err(error) => panic!("Could not write to stdout! Error: {}", error),
     }
 }
 
-fn decrypt_stdin(algorithm: Algorithm, key: Vec<u8>) {
+fn decrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
     let mut cipher_text: Vec<u8> = Vec::new();
-    match io::stdin().read_to_end(cipher_text) {
+    match io::stdin().read_to_end(&mut cipher_text) {
         Ok(n) => (),
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
     let plain_text = decrypt(cipher_text, algorithm, key);
 
-    match io::stdout().write_all(plain_text) {
+    match io::stdout().write_all(&plain_text) {
         Ok(n) => (),
         Err(error) => panic!("Could not write to stdout! Error: {}", error),
     }
 }
 
 fn convert_hex(string: &str) -> Vec<u8> {
-    let hex_vec = Vec::new();
-    let key_length = string.chars().len();
+    let mut bytes = Vec::new();
 
-    if key_length % 2 != 0 {
-        panic!("Key bit length must be divisible by 8!");
+    for tuple in string.chars().step_by(2).zip(string.chars().skip(1).step_by(2)) {
+        let mut byte = hex_char_to_byte(tuple.0);
+        byte <<= 4;
+        byte += hex_char_to_byte(tuple.1);
+        bytes.push(byte);
     }
-
-    for ind in (0..key_length).step_by(2) {
-        let mut byte = 0;
-        for add in 0..2 {
-            match string[ind+add] {
-                '0' => byte += 0x0,
-                '1' => byte += 0x1,
-                '2' => byte += 0x2,
-                '3' => byte += 0x3,
-                '4' => byte += 0x4,
-                '5' => byte += 0x5,
-                '6' => byte += 0x6,
-                '7' => byte += 0x7,
-                '8' => byte += 0x8,
-                '9' => byte += 0x9,
-                'a' => byte += 0xa,
-                'b' => byte += 0xb,
-                'c' => byte += 0xc,
-                'd' => byte += 0xd,
-                'e' => byte += 0xe,
-                'f' => byte += 0xf,
-                _ => panic!("Key contains non-hexadecimal character!"),
-            }
-            if add < 1 {
-                byte <<= 4;
-            }
-        }
-        hex_vec.push(byte);
-    }
-    hex_vec
+    bytes
 }
+
+fn hex_char_to_byte(hex: char) -> u8 {
+    let ret_hex = match hex {
+        '0' => Some(0x0),
+        '1' => Some(0x1),
+        '2' => Some(0x2),
+        '3' => Some(0x3),
+        '4' => Some(0x4),
+        '5' => Some(0x5),
+        '6' => Some(0x6),
+        '7' => Some(0x7),
+        '8' => Some(0x8),
+        '9' => Some(0x9),
+        'a' => Some(0xa),
+        'b' => Some(0xb),
+        'c' => Some(0xc),
+        'd' => Some(0xd),
+        'e' => Some(0xe),
+        'f' => Some(0xf),
+        _ => None,
+    };
+    return ret_hex.expect("Key must be given as a hexadecimal string!");
+}
+
 
 
 fn parse_args() -> (Option<Algorithm>, Vec<String>, Option<String>, Option<Direction>) {
@@ -280,12 +260,12 @@ fn parse_args() -> (Option<Algorithm>, Vec<String>, Option<String>, Option<Direc
                     },
                     ArgState::ReceiveKey => key = Some(argument),
                     ArgState::ReceiveFiles => files.push(argument),
-                    ArgState::ReceiveAlgorithm => algorithm = match_algorithm(argument),
+                    ArgState::ReceiveAlgorithm => algorithm = match_algorithm(&argument),
                 }
             }
         }
     }
-    return (algorithm, files, key);
+    return (algorithm, files, key, direction);
 }
 
 fn match_algorithm(algorithm: &str) -> Option<Algorithm> {
@@ -297,7 +277,6 @@ fn match_algorithm(algorithm: &str) -> Option<Algorithm> {
         "Pontifex" => return Some(Algorithm::Pontifex),
         _ => return None,
     }
-    None
 }
 
 
