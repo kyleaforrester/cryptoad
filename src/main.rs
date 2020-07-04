@@ -63,24 +63,26 @@ fn main() {
     }
 }
 
-fn encrypt(plain_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>) -> Vec<u8> {
-    let cipher_text = match algorithm {
-        Algorithm::Twofish => twofish::encrypt(plain_text, key),
-        Algorithm::Rijndael => rijndael::encrypt(plain_text, key),
-        Algorithm::Serpent => serpent::encrypt(plain_text, key),
-        Algorithm::Pontifex => pontifex::encrypt(plain_text, key),
+fn encrypt<W>(plain_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> io::Result<()>
+where W: Write {
+    match algorithm {
+        Algorithm::Twofish => twofish::encrypt(plain_text, key, output)?,
+        Algorithm::Rijndael => rijndael::encrypt(plain_text, key, output)?,
+        Algorithm::Serpent => serpent::encrypt(plain_text, key, output)?,
+        Algorithm::Pontifex => pontifex::encrypt(plain_text, key, output)?,
     };
-    cipher_text
+    Ok(())
 }
 
-fn decrypt(cipher_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>) -> Vec<u8> {
-    let plain_text = match algorithm {
-        Algorithm::Twofish => twofish::decrypt(cipher_text, key),
-        Algorithm::Rijndael => rijndael::decrypt(cipher_text, key),
-        Algorithm::Serpent => serpent::decrypt(cipher_text, key),
-        Algorithm::Pontifex => pontifex::decrypt(cipher_text, key),
+fn decrypt<W>(cipher_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> io::Result<()>
+where W: Write {
+    match algorithm {
+        Algorithm::Twofish => twofish::decrypt(cipher_text, key, output)?,
+        Algorithm::Rijndael => rijndael::decrypt(cipher_text, key, output)?,
+        Algorithm::Serpent => serpent::decrypt(cipher_text, key, output)?,
+        Algorithm::Pontifex => pontifex::decrypt(cipher_text, key, output)?,
     };
-    plain_text
+    Ok(())
 }
 
 fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
@@ -104,8 +106,6 @@ fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        let cipher_text = encrypt(plain_text, algorithm, key);
-
         let output_file_name = format!("{}_{}", file_str, algorithm);
         let mut output_file;
         let output_path = Path::new(&output_file_name);
@@ -117,12 +117,9 @@ fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match output_file.write_all(&cipher_text) {
-            Ok(_f) => (),
-            Err(error) => {
-                eprintln!("Unable to write to new file {}! {}", output_path.display(), error);
-                continue;
-            }
+        match encrypt(plain_text, algorithm, key, output_file) {
+            Ok(()) => (),
+            Err(e) => eprintln!("Error while writing to file {}!", output_file_name),
         }
     }
 }
@@ -148,8 +145,6 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        let plain_text = decrypt(cipher_text, algorithm, key);
-
         let mut output_file;
         let new_file = format!("{}_{}", file_str, "decrypted");
         let output_path = Path::new(&new_file);
@@ -161,12 +156,9 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match output_file.write_all(&plain_text) {
-            Ok(_f) => (),
-            Err(error) => {
-                eprintln!("Unable to write to new file {}! {}", output_path.display(), error);
-                continue;
-            }
+        match decrypt(cipher_text, algorithm, key, output_file) {
+            Ok(()) => (),
+            Err(e) => eprintln!("Error while writing to file {}!", new_file),
         }
     }
 }
@@ -178,11 +170,9 @@ fn encrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
-    let cipher_text = encrypt(plain_text, algorithm, key);
-
-    match io::stdout().write_all(&cipher_text) {
-        Ok(n) => (),
-        Err(error) => panic!("Could not write to stdout! Error: {}", error),
+    match encrypt(plain_text, algorithm, key, io::stdout()) {
+        Ok(()) => (),
+        Err(e) => eprintln!("{}", e),
     }
 }
 
@@ -193,11 +183,9 @@ fn decrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
-    let plain_text = decrypt(cipher_text, algorithm, key);
-
-    match io::stdout().write_all(&plain_text) {
-        Ok(n) => (),
-        Err(error) => panic!("Could not write to stdout! Error: {}", error),
+    match decrypt(cipher_text, algorithm, key, io::stdout()) {
+        Ok(()) => (),
+        Err(e) => eprintln!("{}", e),
     }
 }
 

@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::{self, Write};
 
 #[derive (PartialEq, Clone, Copy)]
 enum Card {
@@ -18,35 +19,35 @@ impl fmt::Display for Card {
 }
 
 
-pub fn encrypt(plain_text: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
-    let deck = init_deck();
-    let deck = key_deck(deck, key);
-    let keystream = gen_keystream(deck, plain_text.len());
-
-    let mut cipher_text = Vec::new();
-    for i in 0..keystream.len() {
-        cipher_text.push(keystream[i] ^ plain_text[i]);
+pub fn encrypt<W>(plain_text: Vec<u8>, key: &Vec<u8>, mut output: W) -> io::Result<()>
+where W: Write {
+    let mut deck = init_deck();
+    let mut byte = 0;
+    deck = key_deck(deck, key);
+    for i in 0..plain_text.len() {
+        let (byte, new_deck) = gen_byte(deck);
+        deck = new_deck;
+        output.write_all(&[plain_text[i] ^ byte])?;
     }
-    cipher_text
+    Ok(())
 }
 
-pub fn decrypt(cipher_text: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
-    Vec::new()
+pub fn decrypt<W>(cipher_text: Vec<u8>, key: &Vec<u8>, output: W) -> io::Result<()>
+where W: Write {
+    encrypt(cipher_text, key, output)
 }
 
-fn gen_keystream(mut deck: Vec<Card>, length: usize) -> Vec<u8> {
-    let mut keystream = Vec::new();
-    while keystream.len() < length {
+fn gen_byte(mut deck: Vec<Card>) -> (u8, Vec<Card>) {
+    loop {
         shift_joker_a(&mut deck);
         shift_joker_b(&mut deck);
         deck = triple_cut(deck);
         deck = count_cut(deck);
         match output_byte(&deck) {
-            Some(b) => keystream.push(b),
+            Some(b) => break (b, deck),
             None => (),
         }
     }
-    keystream
 }
 
 fn init_deck() -> Vec<Card> {
