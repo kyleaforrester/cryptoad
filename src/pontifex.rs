@@ -1,6 +1,8 @@
 use std::fmt;
 use std::io::{self, Write};
 
+const PILES: usize = 6;
+
 #[derive (PartialEq, Clone, Copy)]
 enum Card {
     Basic(usize),
@@ -62,13 +64,42 @@ fn init_deck() -> Vec<Card> {
 
 fn key_deck(mut deck: Vec<Card>, key: &Vec<u8>) -> Vec<Card> {
     for k in key {
-        shift_joker_a(&mut deck);
-        shift_joker_b(&mut deck);
-        deck = triple_cut(deck);
-        deck = count_cut(deck);
+        for i in 0..8 {
+            shift_joker_a(&mut deck);
+            shift_joker_b(&mut deck);
+            deck = triple_cut(deck);
+            deck = count_cut(deck);
+            if (k >> i) & 1 == 0 {
+                deck = shuffle(deck);
+            }
+            else {
+                deck = pile_shuffle(deck);
+            }
+        }
         deck = key_cut(deck, (*k as usize) + 1);
     }
     deck
+}
+
+fn shuffle(deck: Vec<Card>) -> Vec<Card> {
+    let mut new_deck = Vec::new();
+    let first_half = deck.iter().take(deck.len()/2);
+    let second_half = deck.iter().skip(deck.len()/2);
+    for pair in first_half.zip(second_half) {
+        new_deck.push(*pair.0);
+        new_deck.push(*pair.1);
+    }
+    new_deck
+}
+
+fn pile_shuffle(deck: Vec<Card>) -> Vec<Card> {
+    // There are 258 cards in a deck.
+    // Pile shuffle into 6 decks of 43 each.
+    let mut new_deck = Vec::new();
+    for i in 0..PILES {
+        new_deck.extend(deck.iter().skip(i).step_by(PILES));
+    }
+    new_deck
 }
 
 fn triple_cut(deck: Vec<Card>) -> Vec<Card> {
