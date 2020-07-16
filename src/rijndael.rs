@@ -61,10 +61,10 @@ where W: Write {
 
 fn validate_key(key: &Vec<u8>) -> Result<usize, String> {
     match key.len() {
-        128 => Ok(10),
-        192 => Ok(12),
-        256 => Ok(14),
-        _ => Err(format!("Key must be 128, 192, or 256 bits long for Rijndael. Given key length is {}", key.len()))
+        16 => Ok(10),
+        24 => Ok(12),
+        32 => Ok(14),
+        _ => Err(format!("Key must be 128, 192, or 256 bits long for Rijndael. Given key length is {}", key.len()*8))
     }
 }
 
