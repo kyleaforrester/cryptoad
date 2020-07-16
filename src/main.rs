@@ -63,7 +63,7 @@ fn main() {
     }
 }
 
-fn encrypt<W>(plain_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> io::Result<()>
+fn encrypt<W>(plain_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> Result<(), String>
 where W: Write {
     match algorithm {
         Algorithm::Twofish => twofish::encrypt(plain_text, key, output)?,
@@ -74,7 +74,7 @@ where W: Write {
     Ok(())
 }
 
-fn decrypt<W>(cipher_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> io::Result<()>
+fn decrypt<W>(cipher_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> Result<(), String>
 where W: Write {
     match algorithm {
         Algorithm::Twofish => twofish::decrypt(cipher_text, key, output)?,
@@ -119,7 +119,7 @@ fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
 
         match encrypt(plain_text, algorithm, key, output_file) {
             Ok(()) => (),
-            Err(e) => eprintln!("Error while writing to file {}!", output_file_name),
+            Err(e) => eprintln!("Error while writing to file {}: {}", output_file_name, e),
         }
     }
 }
@@ -158,7 +158,7 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
 
         match decrypt(cipher_text, algorithm, key, output_file) {
             Ok(()) => (),
-            Err(e) => eprintln!("Error while writing to file {}!", new_file),
+            Err(e) => eprintln!("Error while writing to file {}: {}", new_file, e),
         }
     }
 }

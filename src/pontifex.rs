@@ -21,7 +21,7 @@ impl fmt::Display for Card {
 }
 
 
-pub fn encrypt<W>(plain_text: Vec<u8>, key: &Vec<u8>, mut output: W) -> io::Result<()>
+pub fn encrypt<W>(plain_text: Vec<u8>, key: &Vec<u8>, mut output: W) -> Result<(), String>
 where W: Write {
     let mut deck = init_deck();
     let mut byte = 0;
@@ -29,12 +29,15 @@ where W: Write {
     for i in 0..plain_text.len() {
         let (byte, new_deck) = gen_byte(deck);
         deck = new_deck;
-        output.write_all(&[plain_text[i] ^ byte])?;
+        match output.write_all(&[plain_text[i] ^ byte]) {
+            Ok(_a) => (),
+            Err(e) => return Err(format!("Error writing to file: {}", e)),
+        }
     }
     Ok(())
 }
 
-pub fn decrypt<W>(cipher_text: Vec<u8>, key: &Vec<u8>, output: W) -> io::Result<()>
+pub fn decrypt<W>(cipher_text: Vec<u8>, key: &Vec<u8>, output: W) -> Result<(), String>
 where W: Write {
     encrypt(cipher_text, key, output)
 }
