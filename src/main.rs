@@ -1,5 +1,5 @@
 use std::env;
-use std::io::{self, Write, Read};
+use std::io::{self, Write, Read, BufWriter};
 use std::fs::File;
 use std::path::Path;
 use std::fmt;
@@ -117,7 +117,7 @@ fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match encrypt(plain_text, algorithm, key, output_file) {
+        match encrypt(plain_text, algorithm, key, BufWriter::new(output_file)) {
             Ok(()) => (),
             Err(e) => eprintln!("Error while writing to file {}: {}", output_file_name, e),
         }
@@ -156,7 +156,7 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        match decrypt(cipher_text, algorithm, key, output_file) {
+        match decrypt(cipher_text, algorithm, key, BufWriter::new(output_file)) {
             Ok(()) => (),
             Err(e) => eprintln!("Error while writing to file {}: {}", new_file, e),
         }
@@ -170,7 +170,7 @@ fn encrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
-    match encrypt(plain_text, algorithm, key, io::stdout()) {
+    match encrypt(plain_text, algorithm, key, BufWriter::new(io::stdout())) {
         Ok(()) => (),
         Err(e) => eprintln!("{}", e),
     }
@@ -183,7 +183,7 @@ fn decrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
-    match decrypt(cipher_text, algorithm, key, io::stdout()) {
+    match decrypt(cipher_text, algorithm, key, BufWriter::new(io::stdout())) {
         Ok(()) => (),
         Err(e) => eprintln!("{}", e),
     }
