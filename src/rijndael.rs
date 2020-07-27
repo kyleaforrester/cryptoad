@@ -21,7 +21,7 @@ const s_box: [u8; 256] =
     0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16];
 
-const i_s_box: [u8; 256] =
+const inv_s_box: [u8; 256] =
     [0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
     0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
     0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
@@ -54,8 +54,30 @@ where W: Write {
     Ok(())
 }
 
-pub fn decrypt<W>(cipher_text: Vec<u8>, key: &Vec<u8>, output: W) -> Result<(), String>
+pub fn decrypt<W>(cipher_text: Vec<u8>, key: &Vec<u8>, mut output: W) -> Result<(), String>
 where W: Write {
+    //Note that the cipher_text must be a multiple of 128 bytes
+    //The Rijndael/AES encryption should have padded it so.
+    let num_rounds = validate_key(key)?;
+    let key_schedule = gen_key_schedule(key, num_rounds);
+    //We must process the last block separately to strip out any padding
+    let num_blocks = cipher_text.len()/16;
+    for block in cipher_text.chunks(16).take(num_blocks-1) {
+        let d_block = decrypt_block(block, &key_schedule, num_rounds);
+        match output.write_all(&d_block) {
+            Ok(_o) => (),
+            Err(e) => return Err(format!("Error writing to file: {}", e)),
+        }
+    }
+
+    //Decrypt the last block
+    //Strip off the last X bytes according to the last byte
+    let d_block = decrypt_block(&cipher_text[cipher_text.len()-16..], &key_schedule, num_rounds);
+    let end_index = 16 - d_block[15];
+    match output.write_all(&d_block[..(end_index as usize)]) {
+        Ok(_o) => (),
+        Err(e) => return Err(format!("Error writing to file: {}", e)),
+    }
     Ok(())
 }
 
@@ -71,7 +93,7 @@ fn validate_key(key: &Vec<u8>) -> Result<usize, String> {
 fn pad_plain_text(plain_text: &mut Vec<u8>) {
     // Padding will be done as per PKCS#7
     // https://en.wikipedia.org/wiki/Padding_%28cryptography%29#Block_cipher_mode_of_operation
-    let pad_bytes = 128 - (plain_text.len() % 128);
+    let pad_bytes = 16 - (plain_text.len() % 16);
     let pad_bytes = pad_bytes as u8;
     for _i in 0..pad_bytes {
         plain_text.push(pad_bytes);
@@ -187,16 +209,24 @@ fn mix_columns(state: [u8; 16]) -> [u8; 16] {
 }
 
 fn gf_mult(byte: u8, amount: u8) -> u8 {
-    if amount == 2 {
-        let mut new_byte = byte << 1;
-        if new_byte & 0x80 > 0 {
-            new_byte ^= 0x1b;
-        }
-        return new_byte;
-    }
-    else {
-        // Only other amount we use here is 3
-        return gf_mult(byte, 2) ^ byte;
+    match amount {
+        1 => return byte,
+        2 => {
+            let mut new_byte = byte << 1;
+            if new_byte & 0x80 > 0 {
+                new_byte ^= 0x1b;
+            }
+            return new_byte;
+        },
+        3 => return gf_mult(byte, 2) ^ byte,
+        4 => return gf_mult(gf_mult(byte, 2), 2),
+        8 => return gf_mult(gf_mult(byte, 4), 2),
+        //Now list out all the Inverse Mix Columns multiply amounts
+        0x09 => return gf_mult(byte, 8) ^ byte,
+        0x0b => return gf_mult(byte, 8) ^ gf_mult(byte, 3),
+        0x0d => return gf_mult(byte, 8) ^ gf_mult(byte, 4) ^ byte,
+        0x0e => return gf_mult(byte, 8) ^ gf_mult(byte, 4) ^ gf_mult(byte, 2),
+        _ => panic!("Not a Rijndael supported GF Multiplication amount: {}", amount),
     }
 }
 
@@ -210,3 +240,61 @@ fn add_round_key(state: [u8; 16], key_sched: &[[u8; 4]]) -> [u8; 16] {
     new_state
 }
 
+fn decrypt_block(block: &[u8], key_sched: &Vec<[u8; 4]>, nr: usize) -> [u8; 16] {
+    let mut state = [0; 16];
+    state.copy_from_slice(block);
+    state = add_round_key(state, &key_sched[nr*4..(nr+1)*4]);
+
+    for r in (1..nr).rev() {
+        state = inv_shift_rows(state);
+        state = inv_sub_bytes(state);
+        state = add_round_key(state, &key_sched[r*4..(r+1)*4]);
+        state = inv_mix_columns(state);
+    }
+
+    state = inv_shift_rows(state);
+    state = inv_sub_bytes(state);
+    state = add_round_key(state, &key_sched[0..4]);
+    state
+}
+
+fn inv_shift_rows(state: [u8; 16]) -> [u8; 16] {
+    let mut new_state = [0; 16];
+    new_state[1] = state[13];
+    new_state[2] = state[10];
+    new_state[3] = state[7];
+    new_state[5] = state[1];
+    new_state[6] = state[14];
+    new_state[7] = state[11];
+    new_state[9] = state[5];
+    new_state[10] = state[2];
+    new_state[11] = state[15];
+    new_state[13] = state[9];
+    new_state[14] = state[6];
+    new_state[15] = state[3];
+    new_state
+}
+
+fn inv_sub_bytes(state: [u8; 16]) -> [u8; 16] {
+    let mut new_state = [0; 16];
+    for i in 0..16 {
+        new_state[i] = inv_s_box[state[i] as usize];
+    }
+    new_state
+}
+
+fn inv_mix_columns(state: [u8; 16]) -> [u8; 16] {
+    // Note that multiplying by 3 in a GF is equal to
+    // GF_Multiplying by 2 and then XORing with itself
+    // Note that GF_Multiply by 2 is a left shift followed
+    // By a 0x1b XOR if the high bit is set
+    let mut new_state = [0; 16];
+    for i in 0..4 {
+        let c = i*4;
+        new_state[c] = gf_mult(state[c], 0x0e) ^ gf_mult(state[c+1], 0x0b) ^ gf_mult(state[c+2], 0x0d) ^ gf_mult(state[c+3], 0x09);
+        new_state[c+1] = gf_mult(state[c], 0x09) ^ gf_mult(state[c+1], 0x0e) ^ gf_mult(state[c+2], 0x0b) ^ gf_mult(state[c+3], 0x0d);
+        new_state[c+2] = gf_mult(state[c], 0x0d) ^ gf_mult(state[c+1], 0x09) ^ gf_mult(state[c+2], 0x0e) ^ gf_mult(state[c+3], 0x0b);
+        new_state[c+3] = gf_mult(state[c], 0x0b) ^ gf_mult(state[c+1], 0x0d) ^ gf_mult(state[c+2], 09) ^ gf_mult(state[c+3], 0x0e);
+    }
+    new_state
+}
