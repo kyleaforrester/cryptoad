@@ -3,7 +3,7 @@ use std::io::Write;
 
 const PILES: usize = 6;
 
-#[derive (PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 enum Card {
     Basic(usize),
     JokerA,
@@ -20,9 +20,10 @@ impl fmt::Display for Card {
     }
 }
 
-
 pub fn encrypt<W>(plain_text: Vec<u8>, key: &Vec<u8>, mut output: W) -> Result<(), String>
-where W: Write {
+where
+    W: Write,
+{
     let mut deck = init_deck();
     deck = key_deck(deck, key);
     for i in 0..plain_text.len() {
@@ -37,7 +38,9 @@ where W: Write {
 }
 
 pub fn decrypt<W>(cipher_text: Vec<u8>, key: &Vec<u8>, output: W) -> Result<(), String>
-where W: Write {
+where
+    W: Write,
+{
     encrypt(cipher_text, key, output)
 }
 
@@ -73,8 +76,7 @@ fn key_deck(mut deck: Vec<Card>, key: &Vec<u8>) -> Vec<Card> {
             deck = count_cut(deck);
             if (k >> i) & 1 == 0 {
                 deck = shuffle(deck);
-            }
-            else {
+            } else {
                 deck = pile_shuffle(deck);
             }
         }
@@ -85,8 +87,8 @@ fn key_deck(mut deck: Vec<Card>, key: &Vec<u8>) -> Vec<Card> {
 
 fn shuffle(deck: Vec<Card>) -> Vec<Card> {
     let mut new_deck = Vec::new();
-    let first_half = deck.iter().take(deck.len()/2);
-    let second_half = deck.iter().skip(deck.len()/2);
+    let first_half = deck.iter().take(deck.len() / 2);
+    let second_half = deck.iter().skip(deck.len() / 2);
     for pair in first_half.zip(second_half) {
         new_deck.push(*pair.0);
         new_deck.push(*pair.1);
@@ -105,36 +107,40 @@ fn pile_shuffle(deck: Vec<Card>) -> Vec<Card> {
 }
 
 fn triple_cut(deck: Vec<Card>) -> Vec<Card> {
-    let joker_pos: Vec<(usize, &Card)> = deck.iter().enumerate().filter(|&x| *(x.1) == Card::JokerA || *(x.1) == Card::JokerB).collect();
+    let joker_pos: Vec<(usize, &Card)> = deck
+        .iter()
+        .enumerate()
+        .filter(|&x| *(x.1) == Card::JokerA || *(x.1) == Card::JokerB)
+        .collect();
     let first_j = joker_pos[0].0;
     let second_j = joker_pos[1].0;
 
     let mut new_deck = Vec::new();
-    new_deck.extend_from_slice(&deck[second_j+1..]);
+    new_deck.extend_from_slice(&deck[second_j + 1..]);
     new_deck.push(deck[first_j]);
-    new_deck.extend_from_slice(&deck[first_j+1..second_j]);
+    new_deck.extend_from_slice(&deck[first_j + 1..second_j]);
     new_deck.push(deck[second_j]);
     new_deck.extend_from_slice(&deck[..first_j]);
     new_deck
 }
 
 fn count_cut(deck: Vec<Card>) -> Vec<Card> {
-    let count = match deck[deck.len()-1] {
+    let count = match deck[deck.len() - 1] {
         Card::Basic(i) => i,
         _ => return deck,
     };
     let mut new_deck = Vec::new();
-    new_deck.extend_from_slice(&deck[count..deck.len()-1]);
+    new_deck.extend_from_slice(&deck[count..deck.len() - 1]);
     new_deck.extend_from_slice(&deck[..count]);
-    new_deck.push(deck[deck.len()-1]);
+    new_deck.push(deck[deck.len() - 1]);
     new_deck
 }
 
 fn key_cut(deck: Vec<Card>, key_byte: usize) -> Vec<Card> {
     let mut new_deck = Vec::new();
-    new_deck.extend_from_slice(&deck[key_byte..deck.len()-1]);
+    new_deck.extend_from_slice(&deck[key_byte..deck.len() - 1]);
     new_deck.extend_from_slice(&deck[..key_byte]);
-    new_deck.push(deck[deck.len()-1]);
+    new_deck.push(deck[deck.len() - 1]);
     new_deck
 }
 
@@ -144,19 +150,18 @@ fn output_byte(deck: &Vec<Card>) -> Option<u8> {
         _ => 257,
     };
     match deck[count_index] {
-        Card::Basic(i) => return Some((i-1) as u8),
+        Card::Basic(i) => return Some((i - 1) as u8),
         _ => return None,
     }
 }
 
 fn shift_joker_a(deck: &mut Vec<Card>) {
     let joker_ind = deck.iter().position(|&x| x == Card::JokerA).unwrap();
-    if joker_ind < deck.len()-1 {
+    if joker_ind < deck.len() - 1 {
         //JokerA not last card
-        deck[joker_ind] = deck[joker_ind+1];
-        deck[joker_ind+1] = Card::JokerA;
-    }
-    else {
+        deck[joker_ind] = deck[joker_ind + 1];
+        deck[joker_ind + 1] = Card::JokerA;
+    } else {
         //JokerA is the last card!
         deck.pop();
         deck.insert(1, Card::JokerA);
@@ -168,15 +173,13 @@ fn shift_joker_b(deck: &mut Vec<Card>) {
     if joker_ind < deck.len() - 2 {
         //Joker in the middle
         for i in 0..2 {
-            deck[joker_ind+i] = deck[joker_ind+i+1];
+            deck[joker_ind + i] = deck[joker_ind + i + 1];
         }
-        deck[joker_ind+2] = Card::JokerB;
-    }
-    else {
+        deck[joker_ind + 2] = Card::JokerB;
+    } else {
         //Joker near the end
         let distance = deck.len() - joker_ind;
         deck.remove(joker_ind);
-        deck.insert(3-distance, Card::JokerB);
+        deck.insert(3 - distance, Card::JokerB);
     }
 }
-

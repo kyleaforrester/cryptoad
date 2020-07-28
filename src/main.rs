@@ -1,13 +1,13 @@
 use std::env;
-use std::io::{self, Write, Read, BufWriter};
-use std::fs::File;
-use std::path::Path;
 use std::fmt;
+use std::fs::File;
+use std::io::{self, BufWriter, Read, Write};
+use std::path::Path;
 
-mod twofish;
+mod pontifex;
 mod rijndael;
 mod serpent;
-mod pontifex;
+mod twofish;
 
 enum ArgState {
     Begin,
@@ -39,13 +39,17 @@ impl fmt::Display for Algorithm {
     }
 }
 
-
 fn main() {
     let (algorithm, files, key, direction) = parse_args();
 
-    let algorithm = algorithm.expect("Error! -a option for algorithm must be defined. Use -h or --help for full options.");
-    let key = key.expect("Error! -k option for key must be defined. Use -h or --help for full options.");
-    let direction = direction.expect("Error! -d or -e option for direction must be defined. Use -h or --help for full options.");
+    let algorithm = algorithm.expect(
+        "Error! -a option for algorithm must be defined. Use -h or --help for full options.",
+    );
+    let key =
+        key.expect("Error! -k option for key must be defined. Use -h or --help for full options.");
+    let direction = direction.expect(
+        "Error! -d or -e option for direction must be defined. Use -h or --help for full options.",
+    );
 
     let byte_key = convert_hex(&key);
 
@@ -54,8 +58,7 @@ fn main() {
             Direction::Encrypt => encrypt_stdin(&algorithm, &byte_key),
             Direction::Decrypt => decrypt_stdin(&algorithm, &byte_key),
         }
-    }
-    else {
+    } else {
         match direction {
             Direction::Encrypt => encrypt_files(&algorithm, &byte_key, files),
             Direction::Decrypt => decrypt_files(&algorithm, &byte_key, files),
@@ -63,8 +66,15 @@ fn main() {
     }
 }
 
-fn encrypt<W>(plain_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> Result<(), String>
-where W: Write {
+fn encrypt<W>(
+    plain_text: Vec<u8>,
+    algorithm: &Algorithm,
+    key: &Vec<u8>,
+    output: W,
+) -> Result<(), String>
+where
+    W: Write,
+{
     match algorithm {
         Algorithm::Twofish => twofish::encrypt(plain_text, key, output)?,
         Algorithm::Rijndael => rijndael::encrypt(plain_text, key, output)?,
@@ -74,8 +84,15 @@ where W: Write {
     Ok(())
 }
 
-fn decrypt<W>(cipher_text: Vec<u8>, algorithm: &Algorithm, key: &Vec<u8>, output: W) -> Result<(), String>
-where W: Write {
+fn decrypt<W>(
+    cipher_text: Vec<u8>,
+    algorithm: &Algorithm,
+    key: &Vec<u8>,
+    output: W,
+) -> Result<(), String>
+where
+    W: Write,
+{
     match algorithm {
         Algorithm::Twofish => twofish::decrypt(cipher_text, key, output)?,
         Algorithm::Rijndael => rijndael::decrypt(cipher_text, key, output)?,
@@ -112,7 +129,11 @@ fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
         match File::create(&output_path) {
             Ok(f) => output_file = f,
             Err(error) => {
-                eprintln!("Could not open output file {}! {}", output_path.display(), error);
+                eprintln!(
+                    "Could not open output file {}! {}",
+                    output_path.display(),
+                    error
+                );
                 continue;
             }
         }
@@ -151,7 +172,11 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
         match File::create(&output_path) {
             Ok(f) => output_file = f,
             Err(error) => {
-                eprintln!("Could not open output file {}! {}", output_path.display(), error);
+                eprintln!(
+                    "Could not open output file {}! {}",
+                    output_path.display(),
+                    error
+                );
                 continue;
             }
         }
@@ -192,7 +217,11 @@ fn decrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
 fn convert_hex(string: &str) -> Vec<u8> {
     let mut bytes = Vec::new();
 
-    for tuple in string.chars().step_by(2).zip(string.chars().skip(1).step_by(2)) {
+    for tuple in string
+        .chars()
+        .step_by(2)
+        .zip(string.chars().skip(1).step_by(2))
+    {
         let mut byte = hex_char_to_byte(tuple.0);
         byte <<= 4;
         byte += hex_char_to_byte(tuple.1);
@@ -224,9 +253,12 @@ fn hex_char_to_byte(hex: char) -> u8 {
     return ret_hex.expect("Key must be given as a hexadecimal string!");
 }
 
-
-
-fn parse_args() -> (Option<Algorithm>, Vec<String>, Option<String>, Option<Direction>) {
+fn parse_args() -> (
+    Option<Algorithm>,
+    Vec<String>,
+    Option<String>,
+    Option<Direction>,
+) {
     let mut arg_state = ArgState::Begin;
     let mut files: Vec<String> = Vec::new();
     let mut algorithm = None;
@@ -240,17 +272,15 @@ fn parse_args() -> (Option<Algorithm>, Vec<String>, Option<String>, Option<Direc
             "-d" | "--decrypt" => direction = Some(Direction::Decrypt),
             "-e" | "--encrypt" => direction = Some(Direction::Encrypt),
             "-h" | "--help" => help_args(),
-            _ => {
-                match arg_state {
-                    ArgState::Begin => {
-                        eprintln!("Error unknown argument {}! Expected argument flags -k, -f, -a, -d, -e, or -h.  Usage:", argument);
-                        help_args();
-                    },
-                    ArgState::ReceiveKey => key = Some(argument),
-                    ArgState::ReceiveFiles => files.push(argument),
-                    ArgState::ReceiveAlgorithm => algorithm = match_algorithm(&argument),
+            _ => match arg_state {
+                ArgState::Begin => {
+                    eprintln!("Error unknown argument {}! Expected argument flags -k, -f, -a, -d, -e, or -h.  Usage:", argument);
+                    help_args();
                 }
-            }
+                ArgState::ReceiveKey => key = Some(argument),
+                ArgState::ReceiveFiles => files.push(argument),
+                ArgState::ReceiveAlgorithm => algorithm = match_algorithm(&argument),
+            },
         }
     }
     return (algorithm, files, key, direction);
@@ -266,7 +296,6 @@ fn match_algorithm(algorithm: &str) -> Option<Algorithm> {
         _ => return None,
     }
 }
-
 
 fn help_args() {
     println!("Help args... help yourself.");
