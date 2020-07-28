@@ -107,7 +107,7 @@ fn encrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
         }
 
         let output_file_name = format!("{}_{}", file_str, algorithm);
-        let mut output_file;
+        let output_file;
         let output_path = Path::new(&output_file_name);
         match File::create(&output_path) {
             Ok(f) => output_file = f,
@@ -145,7 +145,7 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
             }
         }
 
-        let mut output_file;
+        let output_file;
         let new_file = format!("{}_{}", file_str, "decrypted");
         let output_path = Path::new(&new_file);
         match File::create(&output_path) {
@@ -166,7 +166,7 @@ fn decrypt_files(algorithm: &Algorithm, key: &Vec<u8>, files: Vec<String>) {
 fn encrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
     let mut plain_text: Vec<u8> = Vec::new();
     match io::stdin().read_to_end(&mut plain_text) {
-        Ok(n) => (),
+        Ok(_n) => (),
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 
@@ -179,7 +179,7 @@ fn encrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
 fn decrypt_stdin(algorithm: &Algorithm, key: &Vec<u8>) {
     let mut cipher_text: Vec<u8> = Vec::new();
     match io::stdin().read_to_end(&mut cipher_text) {
-        Ok(n) => (),
+        Ok(_n) => (),
         Err(error) => panic!("Could not read from stdin! Error: {}", error),
     }
 

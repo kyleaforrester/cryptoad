@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::{self, Write};
+use std::io::Write;
 
 const PILES: usize = 6;
 
@@ -24,7 +24,6 @@ impl fmt::Display for Card {
 pub fn encrypt<W>(plain_text: Vec<u8>, key: &Vec<u8>, mut output: W) -> Result<(), String>
 where W: Write {
     let mut deck = init_deck();
-    let mut byte = 0;
     deck = key_deck(deck, key);
     for i in 0..plain_text.len() {
         let (byte, new_deck) = gen_byte(deck);
@@ -181,8 +180,3 @@ fn shift_joker_b(deck: &mut Vec<Card>) {
     }
 }
 
-fn print_deck(deck: &Vec<Card>) {
-    for c in deck.iter().enumerate() {
-        print!("{}:{},", c.0, c.1);
-    }
-}
