@@ -298,6 +298,34 @@ fn match_algorithm(algorithm: &str) -> Option<Algorithm> {
 }
 
 fn help_args() {
-    println!("Help args... help yourself.");
+    println!("Required Arguments:");
+    println!("    -k | --key");
+    println!("        Private key used to encrypt/decrypt data.  Must be a hexadecimal string.");
+    println!("    -a | --algorithm");
+    println!("        Name of encryption algorithm to use.  Available algorithms:");
+    println!("        RIJNDAEL | AES");
+    println!("        PONTIFEX");
+    println!("    (-d | --decrypt) | (-e | --encrypt)");
+    println!("        Accepts only either decrypt or encrypt.  Required to tell cryptoad what direction to encrypt.");
+    println!("    -h | --help");
+    println!("        Print out usage options.");
+
+    println!("Optional Arguments:");
+    println!("    -f | --files");
+    println!("        Whitespace separated list of files to encrypt/decrypt.");
+    println!("        If this argument is not provided, cryptoad will by default encrypt/decrypt from stdin to stdout.");
+
+    println!();
+    println!("Common Usage Examples:");
+    println!(
+        "    cryptoad -e -a aes -k 202cb962ac59075b964b07152d234b70 -f /tmp/important_file.docx"
+    );
+    println!("        ^^ Creates a new file /tmp/important_file.docx_rijndael that is encrypted.");
+    println!("    cryptoad -d -a aes -k 202cb962ac59075b964b07152d234b70 -f /tmp/important_file.docx_rijndael");
+    println!("        ^^ Creates a new file /tmp/important_file.docx_rijndael_decrypted that is decrypted.");
+    println!("    echo \"Plain Text Message\" | cryptoad -e -a aes -k 81dc9bdb52d04dc20036dbd8313ed055 > /tmp/my_encrypted_file");
+    println!("        ^^ Reads data from stdin and sends the encrypted version to stdout.");
+    println!();
+
     std::process::exit(0);
 }
