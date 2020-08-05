@@ -412,10 +412,10 @@ mod tests {
     fn test_permutate() {
         let block = [0x0ff1f329, 0xb5b1351e, 0x57ff7387, 0x3739aedb];
 
-        let block_IP = permutate(block, IP_TABLE);
-        let block_FP = permutate(block_IP, FP_TABLE);
+        let block_ip = permutate(block, IP_TABLE);
+        let block_fp = permutate(block_ip, FP_TABLE);
 
-        assert_eq!(block, block_FP);
+        assert_eq!(block, block_fp);
     }
 
     #[test]
