@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 use std::path::Path;
 
+mod darcy;
 mod pontifex;
 mod rijndael;
 mod serpent;
@@ -82,7 +83,7 @@ where
         Algorithm::Rijndael => rijndael::encrypt(plain_text, key, output)?,
         Algorithm::Serpent => serpent::encrypt(plain_text, key, output)?,
         Algorithm::Pontifex => pontifex::encrypt(plain_text, key, output)?,
-        Algorithm::Darcy => pontifex::encrypt(plain_text, key, output)?,
+        Algorithm::Darcy => darcy::encrypt(plain_text, key, output)?,
     };
     Ok(())
 }
@@ -101,7 +102,7 @@ where
         Algorithm::Rijndael => rijndael::decrypt(cipher_text, key, output)?,
         Algorithm::Serpent => serpent::decrypt(cipher_text, key, output)?,
         Algorithm::Pontifex => pontifex::decrypt(cipher_text, key, output)?,
-        Algorithm::Darcy => pontifex::decrypt(cipher_text, key, output)?,
+        Algorithm::Darcy => darcy::decrypt(cipher_text, key, output)?,
     };
     Ok(())
 }
