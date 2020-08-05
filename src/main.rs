@@ -21,6 +21,7 @@ enum Algorithm {
     Rijndael,
     Serpent,
     Pontifex,
+    Darcy,
 }
 
 enum Direction {
@@ -35,6 +36,7 @@ impl fmt::Display for Algorithm {
             Algorithm::Rijndael => write!(f, "rijndael"),
             Algorithm::Serpent => write!(f, "serpent"),
             Algorithm::Pontifex => write!(f, "pontifex"),
+            Algorithm::Darcy => write!(f, "darcy"),
         }
     }
 }
@@ -80,6 +82,7 @@ where
         Algorithm::Rijndael => rijndael::encrypt(plain_text, key, output)?,
         Algorithm::Serpent => serpent::encrypt(plain_text, key, output)?,
         Algorithm::Pontifex => pontifex::encrypt(plain_text, key, output)?,
+        Algorithm::Darcy => pontifex::encrypt(plain_text, key, output)?,
     };
     Ok(())
 }
@@ -98,6 +101,7 @@ where
         Algorithm::Rijndael => rijndael::decrypt(cipher_text, key, output)?,
         Algorithm::Serpent => serpent::decrypt(cipher_text, key, output)?,
         Algorithm::Pontifex => pontifex::decrypt(cipher_text, key, output)?,
+        Algorithm::Darcy => pontifex::decrypt(cipher_text, key, output)?,
     };
     Ok(())
 }
@@ -293,6 +297,7 @@ fn match_algorithm(algorithm: &str) -> Option<Algorithm> {
         "AES" | "aes" => return Some(Algorithm::Rijndael),
         "Serpent" | "serpent" => return Some(Algorithm::Serpent),
         "Pontifex" | "pontifex" => return Some(Algorithm::Pontifex),
+        "Darcy" | "darcy" => return Some(Algorithm::Darcy),
         _ => return None,
     }
 }
@@ -304,7 +309,9 @@ fn help_args() {
     println!("    -a | --algorithm");
     println!("        Name of encryption algorithm to use.  Available algorithms:");
     println!("        RIJNDAEL | AES");
+    println!("        SERPENT");
     println!("        PONTIFEX");
+    println!("        DARCY");
     println!("    (-d | --decrypt) | (-e | --encrypt)");
     println!("        Accepts only either decrypt or encrypt.  Required to tell cryptoad what direction to encrypt.");
     println!("    -h | --help");
